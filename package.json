@@ -1,0 +1,31 @@
+{
+  "name": "autoplaybot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon index.js --exec babel-node --presets es2017"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kirasagi/AutoplayBot.git"
+  },
+  "author": "Kirasagi",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kirasagi/AutoplayBot/issues"
+  },
+  "homepage": "https://github.com/kirasagi/AutoplayBot#readme",
+  "dependencies": {
+    "discord.js": "^11.1.0",
+    "help": "^3.0.2",
+    "node-opus": "^0.2.6"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-preset-env": "^1.5.2",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-es2017": "^6.24.1"
+  }
+}
