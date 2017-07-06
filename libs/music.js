@@ -1,5 +1,7 @@
 const YoutubeDL = require('youtube-dl');
 const ytdl = require('ytdl-core');
+const Youtube = require('youtube-api');
+const _ = require('lodash');
 
 module.exports = class Music {
 
@@ -84,9 +86,10 @@ module.exports = class Music {
                 searchstring = 'gvsearch1:' + suffix;
             }
 
-            YoutubeDL.getInfo(searchstring, ['-q', '--no-warnings', '--force-ipv4'], (err, info) => {
+            YoutubeDL.getInfo(searchstring, ['-q', '--no-warnings', '--force-ipv4'], { maxBuffer: Infinity }, (err, info) => {
                 // Verify the info.
                 if (err || info.format_id === undefined || info.format_id.startsWith('0')) {
+                    if (err) console.log(err);
                     return response.edit(this.wrap('Invalid video!'));
                 }
 
@@ -317,6 +320,23 @@ module.exports = class Music {
         }).then(connection => {
             // Get the first item in the queue.
             const video = queue[0];
+            console.log(video.id);
+            Youtube.search.list({
+                part: 'snippet',
+                type: 'video',
+                relatedToVideoId: video.id
+            }, (err, res) => {
+                if (err) console.log(err); // TODO add error handling
+                else {
+                    console.log('hereeeeeeeee');
+                    const upNext = _.sample(res.items);
+                    const id = upNext.id.videoId;
+                    upNext.snippet.webpage_url = `https://www.youtube.com/watch?v=${id}`;
+                    upNext.snippet.id = id;
+                    console.log(`up next: ${upNext.snippet.title}`)
+                    queue.push(upNext.snippet);
+                }
+            });
 
             console.log(video.webpage_url);
 

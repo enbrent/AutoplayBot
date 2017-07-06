@@ -25,7 +25,11 @@
     "google-auth-library": "^0.10.0",
     "googleapis": "^20.0.1",
     "help": "^3.0.2",
+    "lien": "^3.0.4",
+    "lodash": "^4.17.4",
     "node-opus": "^0.2.6",
+    "opn": "^5.1.0",
+    "r-json": "^1.2.7",
     "youtube-api": "^2.0.8",
     "youtube-dl": "^1.11.1",
     "ytdl-core": "^0.14.4"
