@@ -209,6 +209,7 @@ module.exports = class Player {
      * @returns {<promise>} - The response message.
      */
     leave(msg, suffix) {
+        console.log('inside leave');
         if (isAdmin(msg.member)) {
             const voiceConnection = client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
             if (voiceConnection === null) return msg.channel.send(this.wrap('I\'m not in any channel!.'));
@@ -303,13 +304,13 @@ module.exports = class Player {
             msg.channel.send(this.wrap('Playback finished.'));
 
             // Leave the voice channel.
-            const voiceConnection = client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+            const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
             if (voiceConnection !== null) return voiceConnection.disconnect();
         }
 
         new Promise((resolve, reject) => {
+
             // Join the voice channel if not already in one.
-            // const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
             if (this.CHANNEL) {
                 msg.guild.channels.find('name', this.CHANNEL).join().then(connection => {
                     resolve(connection);
@@ -325,10 +326,13 @@ module.exports = class Player {
                     console.log(error);
                 });
             } else {
-                // Otherwise, clear the queue and do nothing.
+                // Otherwise, clear queue and leave if in voice
                 queue.splice(0, queue.length);
-                reject();
+                const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+                if (voiceConnection !== null) return voiceConnection.disconnect();
+                reject("Player tried to play while not in voice");
             }
+
         }).then(connection => {
             // Get the first item in the queue.
             const video = queue[0];
@@ -382,7 +386,9 @@ module.exports = class Player {
                     }, 1000);
                 });
             }).catch((error) => {
-                console.log(error);
+                // Not really an error, that means no one is listening anymore, so let's just disconnect
+                client.
+                    console.log(error);
             });
         }).catch((error) => {
             console.log(error);
