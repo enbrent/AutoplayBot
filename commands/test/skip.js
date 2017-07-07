@@ -1,7 +1,5 @@
 const Commando = require('discord.js-commando');
 
-const YT_URL_VALIDATOR = `^(http(s)?:\/\/)?((w){3}.)?youtu(be|.be)?(\.com)?\/.+`;
-
 module.exports = class SkipCommand extends Commando.Command {
     constructor(client, player) {
         super(client, {

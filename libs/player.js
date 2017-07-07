@@ -1,6 +1,8 @@
 const YoutubeDL = require('youtube-dl');
 const ytdl = require('ytdl-core');
 const Youtube = require('youtube-api');
+const { promisify } = require('util');
+
 const _ = require('lodash');
 
 module.exports = class Player {
@@ -107,9 +109,12 @@ module.exports = class Player {
                 }
 
                 info.requester = msg.author.id;
-
+                let msgPrefix = 'Queued';
+                if (autoplay) {
+                    msgPrefix = 'Autoplay';
+                }
                 // Queue the video.
-                response.edit(this.wrap('Queued: ' + info.title)).then(() => {
+                response.edit(this.wrap(`${msgPrefix}: ${info.title}`)).then(() => {
                     queue.push(info);
                     // Play if only one element in the queue.
                     if (queue.length === 1) this.executeQueue(msg, queue);
@@ -189,10 +194,10 @@ module.exports = class Player {
      */
     pause(msg, suffix) {
         // Get the voice connection.
-        const voiceConnection = client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+        const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
         if (voiceConnection === null) return msg.channel.send(this.wrap('No music being played.'));
 
-        if (!isAdmin(msg.member))
+        if (!this.isAdmin(msg.member))
             return msg.channel.send(this.wrap('You are not authorized to use this.'));
 
         // Pause.
@@ -210,11 +215,11 @@ module.exports = class Player {
      */
     leave(msg, suffix) {
         console.log('inside leave');
-        if (isAdmin(msg.member)) {
-            const voiceConnection = client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+        if (this.isAdmin(msg.member)) {
+            const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
             if (voiceConnection === null) return msg.channel.send(this.wrap('I\'m not in any channel!.'));
             // Clear the queue.
-            const queue = getQueue(msg.guild.id);
+            const queue = this.getQueue(msg.guild.id);
             queue.splice(0, queue.length);
 
             // End the stream and disconnect.
@@ -252,10 +257,10 @@ module.exports = class Player {
     resume(msg, suffix) {
         console.log('inside resume');
         // Get the voice connection.
-        const voiceConnection = client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+        const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
         if (voiceConnection === null) return msg.channel.send(this.wrap('No music being played.'));
 
-        if (!isAdmin(msg.member))
+        if (!this.isAdmin(msg.member))
             return msg.channel.send(this.wrap('You are not authorized to use this.'));
 
         // Resume.
@@ -297,7 +302,7 @@ module.exports = class Player {
      * @param {object} queue - The song queue for this server.
      * @returns {<promise>} - The voice channel.
      */
-    executeQueue(msg, queue) {
+    async executeQueue(msg, queue) {
         console.log('inside executeQueue');
         // If the queue is empty, finish.
         if (queue.length === 0) {
@@ -307,91 +312,75 @@ module.exports = class Player {
             const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
             if (voiceConnection !== null) return voiceConnection.disconnect();
         }
+        // Join the voice channel if not already in one.
+        let connection;
+        if (this.CHANNEL) {
+            connection = await msg.guild.channels.find('name', this.CHANNEL).join();
+            // Check if the user is in a voice channel.
+        } else if (msg.member.voiceChannel) {
+            connection = await msg.member.voiceChannel.join();
+        } else {
+            // Otherwise, clear queue and leave if in voice
+            queue.splice(0, queue.length);
+            const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+            if (voiceConnection !== null) return voiceConnection.disconnect();
+            throw new Error("Player tried to play while not in voice");
+        }
 
-        new Promise((resolve, reject) => {
+        // Get the first item in the queue.
+        const current = queue[0];
+        // Search for the next related song for autoplay (TODO: disable when autoplay isn't enabled)
+        const next = await this.getUpcoming(current.id);
+        queue.push(next);
+        await msg.channel.send(this.wrap(`Now Playing: ${current.title}\nUp Next: ${next.title}`));
+        let dispatcher = connection.playStream(ytdl(current.webpage_url, { filter: 'audioonly' }), { seek: 0, volume: (this.DEFAULT_VOLUME / 100) });
 
-            // Join the voice channel if not already in one.
-            if (this.CHANNEL) {
-                msg.guild.channels.find('name', this.CHANNEL).join().then(connection => {
-                    resolve(connection);
-                }).catch((error) => {
-                    console.log(error);
-                });
-
-                // Check if the user is in a voice channel.
-            } else if (msg.member.voiceChannel) {
-                msg.member.voiceChannel.join().then(connection => {
-                    resolve(connection);
-                }).catch((error) => {
-                    console.log(error);
-                });
-            } else {
-                // Otherwise, clear queue and leave if in voice
-                queue.splice(0, queue.length);
-                const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
-                if (voiceConnection !== null) return voiceConnection.disconnect();
-                reject("Player tried to play while not in voice");
-            }
-
-        }).then(connection => {
-            // Get the first item in the queue.
-            const video = queue[0];
-            console.log(video.id);
-            Youtube.search.list({
-                part: 'snippet',
-                type: 'video',
-                relatedToVideoId: video.id
-            }, (err, res) => {
-                if (err) console.log(err); // TODO add error handling
-                else {
-                    console.log('hereeeeeeeee');
-                    const upNext = _.sample(res.items);
-                    const id = upNext.id.videoId;
-                    upNext.snippet.webpage_url = `https://www.youtube.com/watch?v=${id}`;
-                    upNext.snippet.id = id;
-                    console.log(`up next: ${upNext.snippet.title}`)
-                    queue.push(upNext.snippet);
-                }
-            });
-
-            console.log(video.webpage_url);
-
-            // Play the video.
-            msg.channel.send(this.wrap('Now Playing: ' + video.title)).then(() => {
-                let dispatcher = connection.playStream(ytdl(video.webpage_url, { filter: 'audioonly' }), { seek: 0, volume: (this.DEFAULT_VOLUME / 100) });
-
-                connection.on('error', (error) => {
-                    // Skip to the next song.
-                    console.log(error);
-                    queue.shift();
-                    this.executeQueue(msg, queue);
-                });
-
-                dispatcher.on('error', (error) => {
-                    // Skip to the next song.
-                    console.log(error);
-                    queue.shift();
-                    this.executeQueue(msg, queue);
-                });
-
-                dispatcher.on('end', () => {
-                    // Wait a second.
-                    setTimeout(() => {
-                        if (queue.length > 0) {
-                            // Remove the song from the queue.
-                            queue.shift();
-                            // Play the next song in the queue.
-                            this.executeQueue(msg, queue);
-                        }
-                    }, 1000);
-                });
-            }).catch((error) => {
-                // Not really an error, that means no one is listening anymore, so let's just disconnect
-                client.
-                    console.log(error);
-            });
-        }).catch((error) => {
+        connection.on('error', (error) => {
+            // Skip to the next song.
             console.log(error);
+            queue.shift();
+            this.executeQueue(msg, queue);
+        });
+
+        dispatcher.on('error', (error) => {
+            // Skip to the next song.
+            console.log(error);
+            queue.shift();
+            this.executeQueue(msg, queue);
+        });
+
+        dispatcher.on('end', () => {
+            // Wait a second.
+            setTimeout(() => {
+                if (queue.length > 0) {
+                    // Remove the song from the queue.
+                    queue.shift();
+                    // Play the next song in the queue.
+                    this.executeQueue(msg, queue);
+                }
+            }, 1000);
+        });
+    }
+
+    /**
+     * Gets the next song for autoplay mode
+     * 
+     * @param {string} currentVideoId - The current video id.
+     * @returns {<promise>} - The snippet of the next video.
+     */
+    getUpcoming(currentVideoId) {
+        const list = promisify(Youtube.search.list);
+        return list({
+            part: 'snippet',
+            type: 'video',
+            relatedToVideoId: currentVideoId
+        }).then(res => {
+            console.log('hereeeeeeeee');
+            const upNext = _.sample(res.items);
+            const id = upNext.id.videoId;
+            upNext.snippet.webpage_url = `https://www.youtube.com/watch?v=${id}`;
+            upNext.snippet.id = id;
+            return Promise.resolve(upNext.snippet);
         });
     }
 

@@ -2,7 +2,6 @@ const Discord = require('discord.js');
 const Commando = require('discord.js-commando');
 const Youtube = require('youtube-api');
 
-
 const fs = require('fs');
 const path = require('path');
 const readJson = require('r-json');
@@ -28,6 +27,9 @@ const Player = require('./libs/player');
 const player = new Player(client);
 const AutoplayCommand = require('./commands/test/autoplay');
 const SkipCommand = require('./commands/test/skip');
+const StopCommand = require('./commands/test/stop');
+const PauseCommand = require('./commands/test/pause');
+const ResumeCommand = require('./commands/test/resume')
 
 client.registry
     .registerGroups([
@@ -35,6 +37,9 @@ client.registry
     ])
     .registerDefaults()
     .registerCommand(new AutoplayCommand(client, player))
-    .registerCommand(new SkipCommand(client, player));
+    .registerCommand(new SkipCommand(client, player))
+    .registerCommand(new StopCommand(client, player))
+    .registerCommand(new PauseCommand(client, player))
+    .registerCommand(new ResumeCommand(client, player));
 
 client.login(TOKEN_ID);
