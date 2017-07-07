@@ -2,6 +2,7 @@ const Discord = require('discord.js');
 const Commando = require('discord.js-commando');
 const Youtube = require('youtube-api');
 
+
 const fs = require('fs');
 const path = require('path');
 const readJson = require('r-json');
@@ -23,11 +24,17 @@ client.on('ready', () => {
     console.log('I am ready');
 });
 
+const Player = require('./libs/player');
+const player = new Player(client);
+const AutoplayCommand = require('./commands/test/autoplay');
+const SkipCommand = require('./commands/test/skip');
+
 client.registry
     .registerGroups([
         ['test', 'Experimental commands']
     ])
     .registerDefaults()
-    .registerCommandsIn(path.join(__dirname, 'commands'));
+    .registerCommand(new AutoplayCommand(client, player))
+    .registerCommand(new SkipCommand(client, player));
 
 client.login(TOKEN_ID);

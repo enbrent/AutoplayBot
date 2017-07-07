@@ -1,11 +1,9 @@
 const Commando = require('discord.js-commando');
-const Music = require('../../libs/music');
-
 
 const YT_URL_VALIDATOR = `^(http(s)?:\/\/)?((w){3}.)?youtu(be|.be)?(\.com)?\/.+`;
 
 module.exports = class AutoplayCommand extends Commando.Command {
-    constructor(client) {
+    constructor(client, player) {
         super(client, {
             name: 'autoplay',
             group: 'test',
@@ -24,12 +22,12 @@ module.exports = class AutoplayCommand extends Commando.Command {
             ]
         })
 
-        this.player = new Music();
+        this.player = player;
 
     }
 
     async run(msg, args) {
         const url = args.url;
-        this.player.play(msg, url);
+        this.player.play(msg, url, true);
     }
 };

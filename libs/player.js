@@ -3,9 +3,11 @@ const ytdl = require('ytdl-core');
 const Youtube = require('youtube-api');
 const _ = require('lodash');
 
-module.exports = class Music {
+module.exports = class Player {
 
-    constructor(options) {
+    constructor(client, options) {
+        this.client = client;
+
         // Get all options.
         this.GLOBAL = (options && options.global) || false;
         this.MAX_QUEUE_SIZE = (options && options.maxQueueSize) || 20;
@@ -64,7 +66,7 @@ module.exports = class Music {
      * @param {string} suffix - Command suffix.
      * @returns {<promise>} - The response edit.
      */
-    play(msg, suffix) {
+    play(msg, suffix, autoplay) {
         // Make sure the user is in a voice channel.
         if (!this.CHANNEL && msg.member.voiceChannel === undefined) return msg.channel.send(this.wrap('You\'re not in a voice channel.'));
 
@@ -73,6 +75,17 @@ module.exports = class Music {
 
         // Get the queue.
         const queue = this.getQueue(msg.guild.id);
+
+        // If autoplay mode is on, clear queue
+        if (autoplay) {
+            queue.splice(0, queue.length);
+            const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+            if (voiceConnection !== null) {
+                const dispatcher = voiceConnection.player.dispatcher;
+                if (voiceConnection.paused) dispatcher.resume();
+                dispatcher.end();
+            }
+        }
 
         // Check if the queue has reached its maximum size.
         if (queue.length >= this.MAX_QUEUE_SIZE) {
@@ -114,16 +127,13 @@ module.exports = class Music {
      * @returns {<promise>} - The response message.
      */
     skip(msg, suffix) {
+        console.log('inside skip');
         // Get the voice connection.
-        const voiceConnection = client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+        const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
         if (voiceConnection === null) return msg.channel.send(this.wrap('No music being played.'));
 
         // Get the queue.
-        const queue = getQueue(msg.guild.id);
-
-        if (!canSkip(msg.member, queue)) return msg.channel.send(this.wrap('You cannot skip this as you didn\'t queue it.')).then((response) => {
-            response.delete(5000);
-        });
+        const queue = this.getQueue(msg.guild.id);
 
         // Get the number to skip.
         let toSkip = 1; // Default 1.
@@ -239,6 +249,7 @@ module.exports = class Music {
      * @returns {<promise>} - The response message.
      */
     resume(msg, suffix) {
+        console.log('inside resume');
         // Get the voice connection.
         const voiceConnection = client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
         if (voiceConnection === null) return msg.channel.send(this.wrap('No music being played.'));
@@ -286,6 +297,7 @@ module.exports = class Music {
      * @returns {<promise>} - The voice channel.
      */
     executeQueue(msg, queue) {
+        console.log('inside executeQueue');
         // If the queue is empty, finish.
         if (queue.length === 0) {
             msg.channel.send(this.wrap('Playback finished.'));
