@@ -29,7 +29,8 @@ const AutoplayCommand = require('./commands/test/autoplay');
 const SkipCommand = require('./commands/test/skip');
 const StopCommand = require('./commands/test/stop');
 const PauseCommand = require('./commands/test/pause');
-const ResumeCommand = require('./commands/test/resume')
+const ResumeCommand = require('./commands/test/resume');
+const NowCommand = require('./commands/test/now');
 
 client.registry
     .registerGroups([
@@ -40,6 +41,7 @@ client.registry
     .registerCommand(new SkipCommand(client, player))
     .registerCommand(new StopCommand(client, player))
     .registerCommand(new PauseCommand(client, player))
-    .registerCommand(new ResumeCommand(client, player));
+    .registerCommand(new ResumeCommand(client, player))
+    .registerCommand(new NowCommand(client, player));
 
 client.login(TOKEN_ID);

@@ -162,25 +162,28 @@ module.exports = class Player {
      * The command for listing the queue.
      *
      * @param {Message} msg - Original message.
-     * @param {string} suffix - Command suffix.
+     * @param {boolean} autoplay - Whether queue is an autoplay queue or not.
      */
-    queue(msg, suffix) {
+    queue(msg, autoplay) {
         // Get the queue.
-        const queue = getQueue(msg.guild.id);
+        const queue = this.getQueue(msg.guild.id);
 
         // Get the queue text.
-        const text = queue.map((video, index) => (
-            (index + 1) + ': ' + video.title
-        )).join('\n');
-
+        let text;
+        if (autoplay) {
+            text = `Now: ${queue[0].title}\nNext: ${queue[1].title}`
+        } else {
+            text = queue.map((video, index) => (
+                (index + 1) + ': ' + video.title
+            )).join('\n');
+        }
         // Get the status of the queue.
         let queueStatus = 'Stopped';
-        const voiceConnection = client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+        const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
         if (voiceConnection !== null) {
             const dispatcher = voiceConnection.player.dispatcher;
             queueStatus = dispatcher.paused ? 'Paused' : 'Playing';
         }
-
         // Send the queue and status.
         msg.channel.send(this.wrap('Queue (' + queueStatus + '):\n' + text));
     }
