@@ -95,13 +95,12 @@ module.exports = class Player {
         }
 
         // Get the video information.
-        msg.channel.send(this.wrap('Searching...')).then(response => {
+        return msg.channel.send(this.wrap('Searching...')).then(response => {
             var searchstring = suffix
             if (!suffix.toLowerCase().startsWith('http')) {
-                searchstring = 'gvsearch1:' + suffix;
+                searchstring = 'ytsearch1:' + suffix;
             }
-
-            YoutubeDL.getInfo(searchstring, ['-q', '--no-warnings', '--force-ipv4'], { maxBuffer: Infinity }, (err, info) => {
+            return YoutubeDL.getInfo(searchstring, ['-q', '--no-warnings', '--force-ipv4'], { maxBuffer: Infinity }, (err, info) => {
                 // Verify the info.
                 if (err || info.format_id === undefined || info.format_id.startsWith('0')) {
                     if (err) console.log(err);
@@ -120,7 +119,7 @@ module.exports = class Player {
                     if (queue.length === 1) this.executeQueue(msg, queue);
                 }).catch(console.log);
             });
-        }).catch(console.log);
+        });
     }
 
 
