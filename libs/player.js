@@ -1,8 +1,8 @@
 const YoutubeDL = require('youtube-dl');
 const ytdl = require('ytdl-core');
 const Youtube = require('youtube-api');
-const { promisify } = require('util');
 
+const { promisify } = require('util');
 const _ = require('lodash');
 
 module.exports = class Player {
