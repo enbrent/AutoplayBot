@@ -12,6 +12,7 @@ module.exports = class AutoplayCommand extends Commando.Command {
             description: 'Autoplay music from search keywords or url',
             details: "Play music continously using keywords or a YouTube URL. Uses YouTube related videos to automatically queue a next song",
             examples: ['autoplay [url]', 'autoplay https://youtu.be/2UkAsDJdIA8', 'autoplay [keywords]', 'autoplay one ok rock'],
+            aliases: ['ap'],
             args: [
                 {
                     key: 'url',
