@@ -25,9 +25,7 @@ module.exports = class AutoplayCommand extends Commando.Command {
                 }
             ]
         })
-
         this.player = player;
-
     }
 
     async run(msg, args) {
