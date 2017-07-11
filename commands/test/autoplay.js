@@ -30,6 +30,6 @@ module.exports = class AutoplayCommand extends Commando.Command {
 
     async run(msg, args) {
         const url = args.url;
-        this.player.play(msg, url, true);
+        return this.player.play(msg, url, true);
     }
 };
