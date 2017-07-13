@@ -13,6 +13,10 @@ module.exports = class ResumeCommand extends Commando.Command {
         this.player = player;
     }
 
+    hasPermission(msg) {
+        return this.player.isDJ(msg.member, msg.guild.id);
+    }
+
     async run(msg, args) {
         this.player.resume(msg);
     }

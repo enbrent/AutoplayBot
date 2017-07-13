@@ -28,6 +28,10 @@ module.exports = class AutoplayCommand extends Commando.Command {
         this.player = player;
     }
 
+    hasPermission(msg) {
+        return this.player.isDJ(msg.member, msg.guild.id);
+    }
+
     async run(msg, args) {
         const url = args.url;
         return this.player.play(msg, url, true);

@@ -20,30 +20,26 @@ module.exports = class Player {
 
         // Create an object of queues.
         this.queues = {};
+
+        // Create an object of djs
+        this.djs = {};
     }
 
     /**
-    * Checks if a user is an admin.
-    *
-    * @param {GuildMember} member - The guild member
-    * @returns {boolean} -
-    */
-    isAdmin(member) {
-        return member.hasPermission("ADMINISTRATOR");
-    }
-
-    /**
-     * Checks if the user can skip the song.
-     *
+     * Checks if the user is a DJ.
      * @param {GuildMember} member - The guild member
-     * @param {array} queue - The current queue
-     * @returns {boolean} - If the user can skip
+     * @param {string} guildId  - The guild ID
+     * @returns {boolean} - Whether the member is a DJ or not
      */
-    canSkip(member, queue) {
-        if (this.ALLOW_ALL_SKIP) return true;
-        else if (queue[0].requester === member.id) return true;
-        else if (isAdmin(member)) return true;
-        else return false;
+    isDJ(member, guildId) {
+        // admin permission can do anything
+        if (member.hasPermission("ADMINISTRATOR")) {
+            return true;
+        }
+        // if not admin, look for specific DJ roles
+        const memberRoles = member.roles.map(role => role.name);
+        const djRoles = this.djs[guildId];
+        return djRoles ? memberRoles.some(r => djRoles.includes(r)) : false;
     }
 
     /**
@@ -199,9 +195,6 @@ module.exports = class Player {
         const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
         if (voiceConnection === null) return msg.channel.send(this.wrap('No music being played.'));
 
-        if (!this.isAdmin(msg.member))
-            return msg.channel.send(this.wrap('You are not authorized to use this.'));
-
         // Pause.
         msg.channel.send(this.wrap('Playback paused.'));
         const dispatcher = voiceConnection.player.dispatcher;
@@ -217,19 +210,16 @@ module.exports = class Player {
      */
     leave(msg, suffix) {
         console.log('inside leave');
-        if (this.isAdmin(msg.member)) {
-            const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
-            if (voiceConnection === null) return msg.channel.send(this.wrap('I\'m not in any channel!.'));
-            // Clear the queue.
-            const queue = this.getQueue(msg.guild.id);
-            queue.splice(0, queue.length);
+        // if (this.isAdmin(msg.member)) {
+        const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+        if (voiceConnection === null) return msg.channel.send(this.wrap('I\'m not in any channel!.'));
+        // Clear the queue.
+        const queue = this.getQueue(msg.guild.id);
+        queue.splice(0, queue.length);
 
-            // End the stream and disconnect.
-            voiceConnection.player.dispatcher.end();
-            voiceConnection.disconnect();
-        } else {
-            msg.channel.send(this.wrap('You don\'t have permission to use that command!'));
-        }
+        // End the stream and disconnect.
+        voiceConnection.player.dispatcher.end();
+        voiceConnection.disconnect();
     }
 
     /**
@@ -239,14 +229,11 @@ module.exports = class Player {
      * @param {string} suffix - Command suffix.
      */
     clearqueue(msg, suffix) {
-        if (isAdmin(msg.member)) {
-            const queue = getQueue(msg.guild.id);
+        // if (isAdmin(msg.member)) {
+        const queue = getQueue(msg.guild.id);
 
-            queue.splice(0, queue.length);
-            msg.channel.send(this.wrap('Queue cleared!'));
-        } else {
-            msg.channel.send(this.wrap('You don\'t have permission to use that command!'));
-        }
+        queue.splice(0, queue.length);
+        msg.channel.send(this.wrap('Queue cleared!'));
     }
 
     /**
@@ -261,9 +248,6 @@ module.exports = class Player {
         // Get the voice connection.
         const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
         if (voiceConnection === null) return msg.channel.send(this.wrap('No music being played.'));
-
-        if (!this.isAdmin(msg.member))
-            return msg.channel.send(this.wrap('You are not authorized to use this.'));
 
         // Resume.
         msg.channel.send(this.wrap('Playback resumed.'));

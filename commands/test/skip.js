@@ -13,6 +13,10 @@ module.exports = class SkipCommand extends Commando.Command {
         this.player = player;
     }
 
+    hasPermission(msg) {
+        return this.player.isDJ(msg.member, msg.guild.id);
+    }
+
     async run(msg, args) {
         // TODO: separate skip on autoplay (skip just 1 song) vs skip on normal play (skip with index)
         this.player.skip(msg);

@@ -13,8 +13,12 @@ module.exports = class SkipCommand extends Commando.Command {
         this.player = player;
     }
 
+    hasPermission(msg) {
+        return this.player.isDJ(msg.member, msg.guild.id);
+    }
+
     async run(msg, args) {
-        // TODO: fix permissions
+
         this.player.leave(msg);
     }
 };

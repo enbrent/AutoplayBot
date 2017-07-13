@@ -13,6 +13,10 @@ module.exports = class PauseCommand extends Commando.Command {
         this.player = player;
     }
 
+    hasPermission(msg) {
+        return this.player.isDJ(msg.member, msg.guild.id);
+    }
+
     async run(msg, args) {
         this.player.pause(msg);
     }

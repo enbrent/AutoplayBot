@@ -31,6 +31,7 @@ const StopCommand = require('./commands/test/stop');
 const PauseCommand = require('./commands/test/pause');
 const ResumeCommand = require('./commands/test/resume');
 const NowCommand = require('./commands/test/now');
+const SetDJCommand = require('./commands/test/setdj');
 
 client.registry
     .registerGroups([
@@ -42,6 +43,7 @@ client.registry
     .registerCommand(new StopCommand(client, player))
     .registerCommand(new PauseCommand(client, player))
     .registerCommand(new ResumeCommand(client, player))
-    .registerCommand(new NowCommand(client, player));
+    .registerCommand(new NowCommand(client, player))
+    .registerCommand(new SetDJCommand(client, player));
 
 client.login(TOKEN_ID);
