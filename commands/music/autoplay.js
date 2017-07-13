@@ -7,7 +7,7 @@ module.exports = class AutoplayCommand extends Commando.Command {
     constructor(client, player) {
         super(client, {
             name: 'autoplay',
-            group: 'test',
+            group: 'music',
             memberName: 'autoplay',
             description: 'Autoplay music from search keywords or url',
             details: "Play music continously using keywords or a YouTube URL. Uses YouTube related videos to automatically queue a next song",

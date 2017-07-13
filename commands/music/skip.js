@@ -3,12 +3,12 @@ const Commando = require('discord.js-commando');
 module.exports = class SkipCommand extends Commando.Command {
     constructor(client, player) {
         super(client, {
-            name: 'stop',
-            group: 'test',
-            memberName: 'stop',
-            description: 'Stop autoplay mode',
-            details: "Stop autoplay mode",
-            examples: ['stop'],
+            name: 'skip',
+            group: 'music',
+            memberName: 'skip',
+            description: 'Skip to next song',
+            details: "Skip to next song",
+            examples: ['skip'],
         })
         this.player = player;
     }
@@ -18,7 +18,7 @@ module.exports = class SkipCommand extends Commando.Command {
     }
 
     async run(msg, args) {
-
-        this.player.leave(msg);
+        // TODO: separate skip on autoplay (skip just 1 song) vs skip on normal play (skip with index)
+        this.player.skip(msg);
     }
 };

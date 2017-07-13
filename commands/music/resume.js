@@ -4,7 +4,7 @@ module.exports = class ResumeCommand extends Commando.Command {
     constructor(client, player) {
         super(client, {
             name: 'resume',
-            group: 'test',
+            group: 'music',
             memberName: 'resume',
             description: 'Resume the song',
             details: "Resume the song",

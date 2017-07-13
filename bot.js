@@ -25,17 +25,18 @@ client.on('ready', () => {
 
 const Player = require('./libs/player');
 const player = new Player(client);
-const AutoplayCommand = require('./commands/test/autoplay');
-const SkipCommand = require('./commands/test/skip');
-const StopCommand = require('./commands/test/stop');
-const PauseCommand = require('./commands/test/pause');
-const ResumeCommand = require('./commands/test/resume');
-const NowCommand = require('./commands/test/now');
-const SetDJCommand = require('./commands/test/setdj');
+const AutoplayCommand = require('./commands/music/autoplay');
+const SkipCommand = require('./commands/music/skip');
+const StopCommand = require('./commands/music/stop');
+const PauseCommand = require('./commands/music/pause');
+const ResumeCommand = require('./commands/music/resume');
+const NowCommand = require('./commands/music/now');
+const SetDJCommand = require('./commands/music/setdj');
 
 client.registry
     .registerGroups([
-        ['test', 'Experimental commands']
+        ['test', 'Experimental commands'],
+        ['music', 'Music commands']
     ])
     .registerDefaults()
     .registerCommand(new AutoplayCommand(client, player))

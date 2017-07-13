@@ -4,7 +4,7 @@ module.exports = class NowCommand extends Commando.Command {
     constructor(client, player) {
         super(client, {
             name: 'now',
-            group: 'test',
+            group: 'music',
             memberName: 'now',
             description: 'Gets the current and upcoming songs',
             details: "Gets the current and upcoming song to play during autoplay mode",

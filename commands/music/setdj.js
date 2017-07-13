@@ -4,7 +4,7 @@ module.exports = class SetDJCommand extends Commando.Command {
     constructor(client, player) {
         super(client, {
             name: 'setdj',
-            group: 'test',
+            group: 'music',
             memberName: 'setdj',
             description: 'Sets the DJ role',
             details: "Sets the DJ role(s). This will only enable play/pause/resume/skip/stop commands to these roles.",
