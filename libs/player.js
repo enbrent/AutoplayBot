@@ -2,6 +2,8 @@ const YoutubeDL = require('youtube-dl');
 const ytdl = require('ytdl-core');
 const Youtube = require('youtube-api');
 
+const MusicQueue = require('./MusicQueue');
+
 const { promisify } = require('util');
 const _ = require('lodash');
 
@@ -52,8 +54,8 @@ module.exports = class Player {
         // Check if global queues are enabled.
         if (this.GLOBAL) server = '_'; // Change to global queue.
 
-        // Return the queue.
-        if (!this.queues[server]) this.queues[server] = [];
+        // Return the queue. TODO: add autoplay option logic
+        if (!this.queues[server]) this.queues[server] = new MusicQueue(true);
         return this.queues[server];
     }
 
@@ -76,7 +78,7 @@ module.exports = class Player {
 
         // If autoplay mode is on, clear queue
         if (autoplay) {
-            queue.splice(0, queue.length);
+            queue.clear();
             const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
             if (voiceConnection !== null) {
                 const dispatcher = voiceConnection.player.dispatcher;
@@ -86,7 +88,7 @@ module.exports = class Player {
         }
 
         // Check if the queue has reached its maximum size.
-        if (queue.length >= this.MAX_QUEUE_SIZE) {
+        if (queue.size() >= this.MAX_QUEUE_SIZE) {
             return msg.channel.send(this.wrap('Maximum queue size reached!'));
         }
 
@@ -112,7 +114,7 @@ module.exports = class Player {
                 response.edit(this.wrap(`${msgPrefix}: ${info.title}`)).then(() => {
                     queue.push(info);
                     // Play if only one element in the queue.
-                    if (queue.length === 1) this.executeQueue(msg, queue);
+                    if (queue.size() === 1) this.executeQueue(msg, queue);
                 }).catch(console.log);
             });
         });
@@ -140,10 +142,10 @@ module.exports = class Player {
         if (!isNaN(suffix) && parseInt(suffix) > 0) {
             toSkip = parseInt(suffix);
         }
-        toSkip = Math.min(toSkip, queue.length);
+        toSkip = Math.min(toSkip, queue.size());
 
         // Skip.
-        queue.splice(0, toSkip - 1);
+        queue.skip(toSkip);
 
         // Resume and stop playing.
         const dispatcher = voiceConnection.player.dispatcher;
@@ -166,9 +168,9 @@ module.exports = class Player {
         // Get the queue text.
         let text;
         if (autoplay) {
-            text = `Now: ${queue[0].title}\nNext: ${queue[1].title}`
+            text = `Now: ${queue.songs[0].title}\nNext: ${queue.songs[1].title}`
         } else {
-            text = queue.map((video, index) => (
+            text = queue.songs.map((video, index) => (
                 (index + 1) + ': ' + video.title
             )).join('\n');
         }
@@ -215,7 +217,7 @@ module.exports = class Player {
         if (voiceConnection === null) return msg.channel.send(this.wrap('I\'m not in any channel!.'));
         // Clear the queue.
         const queue = this.getQueue(msg.guild.id);
-        queue.splice(0, queue.length);
+        queue.clear();
 
         // End the stream and disconnect.
         voiceConnection.player.dispatcher.end();
@@ -232,7 +234,7 @@ module.exports = class Player {
         // if (isAdmin(msg.member)) {
         const queue = getQueue(msg.guild.id);
 
-        queue.splice(0, queue.length);
+        queue.clear();
         msg.channel.send(this.wrap('Queue cleared!'));
     }
 
@@ -291,7 +293,7 @@ module.exports = class Player {
     async executeQueue(msg, queue) {
         console.log('inside executeQueue');
         // If the queue is empty, finish.
-        if (queue.length === 0) {
+        if (queue.size() === 0) {
             msg.channel.send(this.wrap('Playback finished.'));
 
             // Leave the voice channel.
@@ -307,16 +309,16 @@ module.exports = class Player {
             connection = await msg.member.voiceChannel.join();
         } else {
             // Otherwise, clear queue and leave if in voice
-            queue.splice(0, queue.length);
+            queue.clear();
             const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
             if (voiceConnection !== null) return voiceConnection.disconnect();
             throw new Error("Player tried to play while not in voice");
         }
 
         // Get the first item in the queue.
-        const current = queue[0];
+        const current = queue.pop();
         // Search for the next related song for autoplay (TODO: disable when autoplay isn't enabled)
-        const next = await this.getUpcoming(current.id);
+        const next = await this.getUpcoming(current.id, queue);
         queue.push(next);
         await msg.channel.send(this.wrap(`Now Playing: ${current.title}\nUp Next: ${next.title}`));
         let dispatcher = connection.playStream(ytdl(current.webpage_url, { filter: 'audioonly' }), { seek: 0, volume: (this.DEFAULT_VOLUME / 100) });
@@ -324,23 +326,24 @@ module.exports = class Player {
         connection.on('error', (error) => {
             // Skip to the next song.
             console.log(error);
-            queue.shift();
+            // queue.shift();
             this.executeQueue(msg, queue);
         });
 
         dispatcher.on('error', (error) => {
             // Skip to the next song.
             console.log(error);
-            queue.shift();
+            // queue.shift();
             this.executeQueue(msg, queue);
         });
 
         dispatcher.on('end', () => {
+            console.log('inside dispatcher end');
             // Wait a second.
             setTimeout(() => {
-                if (queue.length > 0) {
+                if (queue.size() > 0) {
                     // Remove the song from the queue.
-                    queue.shift();
+                    //queue.shift();
                     // Play the next song in the queue.
                     this.executeQueue(msg, queue);
                 }
@@ -354,15 +357,24 @@ module.exports = class Player {
      * @param {string} currentVideoId - The current video id.
      * @returns {<promise>} - The snippet of the next video.
      */
-    getUpcoming(currentVideoId) {
+    getUpcoming(currentVideoId, queue) {
         const list = promisify(Youtube.search.list);
+        const history = queue.history.map(s => s.id);
+        console.log('history:');
+        console.log(queue.history.map(s => s.title));
         return list({
             part: 'snippet',
             type: 'video',
+            eventType: 'completed', // TODO: add support for livestreams
+            maxResults: 10,
             relatedToVideoId: currentVideoId
         }).then(res => {
-            console.log('hereeeeeeeee');
-            const upNext = _.sample(res.items);
+            console.log('query results:');
+            console.log(res.items.map(i => i.snippet.title));
+
+            let upNext = res.items.find(i => !history.includes(i.id.videoId));
+            upNext = upNext ? upNext : _.sample(res.items);
+            console.log(`up next: ${upNext.snippet.title}`);
             const id = upNext.id.videoId;
             upNext.snippet.webpage_url = `https://www.youtube.com/watch?v=${id}`;
             upNext.snippet.id = id;
