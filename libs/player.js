@@ -54,7 +54,7 @@ module.exports = class Player {
         // Check if global queues are enabled.
         if (this.GLOBAL) server = '_'; // Change to global queue.
 
-        // Return the queue. TODO: add autoplay option logic
+        // Return the queue. TODO:  add autoplay option logic
         if (!this.queues[server]) this.queues[server] = new MusicQueue(true);
         return this.queues[server];
     }
@@ -156,7 +156,7 @@ module.exports = class Player {
     }
 
     /**
-     * The command for listing the queue.
+     * The command for listing the queue. poop
      *
      * @param {Message} msg - Original message.
      * @param {boolean} autoplay - Whether queue is an autoplay queue or not.
