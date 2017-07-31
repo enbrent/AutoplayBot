@@ -30,7 +30,6 @@ const SkipCommand = require('./commands/music/skip');
 const StopCommand = require('./commands/music/stop');
 const PauseCommand = require('./commands/music/pause');
 const ResumeCommand = require('./commands/music/resume');
-const NowCommand = require('./commands/music/now');
 const SetDJCommand = require('./commands/music/setdj');
 const PlayCommand = require('./commands/music/play');
 const QueueCommand = require('./commands/music/queue');
@@ -45,7 +44,6 @@ client.registry
     .registerCommand(new StopCommand(client, player))
     .registerCommand(new PauseCommand(client, player))
     .registerCommand(new ResumeCommand(client, player))
-    .registerCommand(new NowCommand(client, player))
     .registerCommand(new SetDJCommand(client, player))
     .registerCommand(new PlayCommand(client, player))
     .registerCommand(new QueueCommand(client, player));

@@ -158,9 +158,8 @@ module.exports = class Player {
      * The command for listing the queue. poop
      *
      * @param {Message} msg - Original message.
-     * @param {boolean} autoplay - Whether queue is an autoplay queue or not.
      */
-    queue(msg, autoplay) {
+    queue(msg) {
         // Get the queue.
         const queue = this.getQueue(msg.guild.id);
 
