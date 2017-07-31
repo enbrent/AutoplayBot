@@ -3,6 +3,7 @@ const ytdl = require('ytdl-core');
 const Youtube = require('youtube-api');
 
 const MusicQueue = require('./MusicQueue');
+const SettingsProfile = require('./SettingsProfile');
 
 const { promisify } = require('util');
 const _ = require('lodash');
@@ -25,6 +26,9 @@ module.exports = class Player {
 
         // Create an object of djs
         this.djs = {};
+
+        // Create an object of setting profiles.
+        this.settings = {};
     }
 
     /**
@@ -59,6 +63,11 @@ module.exports = class Player {
         return this.queues[server];
     }
 
+    getSettings(server) {
+        if (!this.settings[server]) this.settings[server] = new SettingsProfile(server);
+        return this.settings[server];
+    }
+
     /**
      * The command for adding a song to the queue.
      *
@@ -75,17 +84,6 @@ module.exports = class Player {
 
         // Get the queue.
         const queue = this.getQueue(msg.guild.id);
-
-        // If autoplay mode is on, clear queue
-        if (autoplay) {
-            queue.clear();
-            const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
-            if (voiceConnection !== null) {
-                const dispatcher = voiceConnection.player.dispatcher;
-                if (voiceConnection.paused) dispatcher.resume();
-                dispatcher.end();
-            }
-        }
 
         // Check if the queue has reached its maximum size.
         if (queue.size() >= this.MAX_QUEUE_SIZE) {
@@ -112,9 +110,10 @@ module.exports = class Player {
                 }
                 // Queue the video.
                 response.edit(this.wrap(`${msgPrefix}: ${info.title}`)).then(() => {
+                    info.requestedBy = msg.member.nickname ? msg.member.nickname : msg.author.username;
                     queue.push(info);
                     // Play if only one element in the queue.
-                    if (queue.size() === 1) this.executeQueue(msg, queue);
+                    if (queue.current === null) this.executeQueue(msg, queue);
                 }).catch(console.log);
             });
         });
@@ -165,24 +164,27 @@ module.exports = class Player {
         // Get the queue.
         const queue = this.getQueue(msg.guild.id);
 
-        // Get the queue text.
-        let text;
-        if (autoplay) {
-            text = `Now: ${queue.songs[0].title}\nNext: ${queue.songs[1].title}`
-        } else {
-            text = queue.songs.map((video, index) => (
-                (index + 1) + ': ' + video.title
-            )).join('\n');
+        let text = queue.size() <= 0 ? '- Nothing in queue -\n' : queue.songs.map((video, index) => (
+            `${(index + 1)} : ${video.title} requested by ${video.requestedBy}`
+        )).join('\n');;
+        if (queue.current) {
+            text = `▶ ${queue.current.title} requested by ${queue.current.requestedBy}\n\n` + text + `\n`;
         }
+        if (queue.size() <= 0 && queue.autoplay && queue.autoplayNext) {
+            text += `♫ Autoplay: ${queue.autoplayNext.title}\n`;
+        }
+
         // Get the status of the queue.
         let queueStatus = 'Stopped';
         const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
         if (voiceConnection !== null) {
             const dispatcher = voiceConnection.player.dispatcher;
-            queueStatus = dispatcher.paused ? 'Paused' : 'Playing';
+            if (dispatcher) {
+                queueStatus = dispatcher.paused ? 'Paused' : 'Playing';
+            }
         }
         // Send the queue and status.
-        msg.channel.send(this.wrap('Queue (' + queueStatus + '):\n' + text));
+        return msg.channel.send(this.wrap('Queue (' + queueStatus + '):\n' + text));
     }
 
     /**
@@ -210,7 +212,7 @@ module.exports = class Player {
      * @param {string} suffix - Command suffix.
      * @returns {<promise>} - The response message.
      */
-    leave(msg, suffix) {
+    async leave(msg, suffix) {
         console.log('inside leave');
         // if (this.isAdmin(msg.member)) {
         const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
@@ -220,8 +222,7 @@ module.exports = class Player {
         queue.clear();
 
         // End the stream and disconnect.
-        voiceConnection.player.dispatcher.end();
-        voiceConnection.disconnect();
+        return await voiceConnection.player.dispatcher.end();
     }
 
     /**
@@ -294,11 +295,17 @@ module.exports = class Player {
         console.log('inside executeQueue');
         // If the queue is empty, finish.
         if (queue.size() === 0) {
-            msg.channel.send(this.wrap('Playback finished.'));
+            if (queue.autoplay && queue.autoplayNext) {
+                // Since autoplay, autofill the queue with the related video found when last song played
+                queue.push(queue.autoplayNext);
+            } else {
+                // Nothing in queue, so done playing
+                msg.channel.send(this.wrap('Playback finished.'));
 
-            // Leave the voice channel.
-            const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
-            if (voiceConnection !== null) return voiceConnection.disconnect();
+                // Leave the voice channel.
+                const voiceConnection = this.client.voiceConnections.find(val => val.channel.guild.id == msg.guild.id);
+                if (voiceConnection !== null) return voiceConnection.disconnect();
+            }
         }
         // Join the voice channel if not already in one.
         let connection;
@@ -316,21 +323,19 @@ module.exports = class Player {
         }
 
         // Get the first item in the queue.
-        const current = queue.pop();
-        // Search for the next related song for autoplay (TODO: disable when autoplay isn't enabled)
-        const next = await this.getUpcoming(current.id, queue);
-        queue.push(next);
-        await msg.channel.send(this.wrap(`Now Playing: ${current.title}\nUp Next: ${next.title}`));
+        const current = queue.shift();
+        if (queue.autoplay && queue.size() <= 0) {
+            // Search for the next related song for autoplay.
+            const autoplayNext = await this.getRelatedSong(current.id, queue);
+            autoplayNext.requestedBy = 'rei';
+            queue.autoplayNext = autoplayNext;
+        }
+
+        await msg.channel.send(this.wrap(`Now Playing: ${current.title}`));
+
         let dispatcher = connection.playStream(ytdl(current.webpage_url, { filter: 'audioonly' }), { seek: 0, volume: (this.DEFAULT_VOLUME / 100) });
 
         connection.on('error', (error) => {
-            // Skip to the next song.
-            console.log(error);
-            // queue.shift();
-            this.executeQueue(msg, queue);
-        });
-
-        dispatcher.on('error', (error) => {
             // Skip to the next song.
             console.log(error);
             // queue.shift();
@@ -341,12 +346,8 @@ module.exports = class Player {
             console.log('inside dispatcher end');
             // Wait a second.
             setTimeout(() => {
-                if (queue.size() > 0) {
-                    // Remove the song from the queue.
-                    //queue.shift();
-                    // Play the next song in the queue.
-                    this.executeQueue(msg, queue);
-                }
+                // Play the next song in the queue.
+                this.executeQueue(msg, queue);
             }, 1000);
         });
     }
@@ -356,8 +357,8 @@ module.exports = class Player {
      * 
      * @param {string} currentVideoId - The current video id.
      * @returns {<promise>} - The snippet of the next video.
-     */
-    getUpcoming(currentVideoId, queue) {
+         */
+    getRelatedSong(currentVideoId, queue) {
         const list = promisify(Youtube.search.list);
         const history = queue.history.map(s => s.id);
         console.log('history:');
@@ -387,7 +388,7 @@ module.exports = class Player {
      *
      * @param {string} text - The input text.
      * @returns {string} - The wrapped text.
-     */
+         */
     wrap(text) {
         return '```\n' + text.replace(/`/g, '`' + String.fromCharCode(8203)) + '\n```';
     }

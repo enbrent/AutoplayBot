@@ -7,7 +7,7 @@ const path = require('path');
 const readJson = require('r-json');
 
 const OWNER_ID = '142443229764255744';
-const TOKEN_ID = 'MzMxMDY4MDYzMjQ2MDU3NDgy.DDqLTg.LMtvgH9S4EAMPQe60Co5mIEUlx8';
+const TOKEN_ID = 'MzQxNjI3MDUxNjEyMzA3NDU4.DGD01Q.wFEZvPVYK12fTTmt23ibTtnIiVE';
 
 Youtube.authenticate({
     type: 'key',
@@ -21,17 +21,19 @@ const client = new Commando.Client({
 
 client.on('ready', () => {
     console.log('I am ready');
+    client.user.setGame("with kir ♥");
 });
 
-const Player = require('./libs/player');
+const Player = require('./libs/Player');
 const player = new Player(client);
-const AutoplayCommand = require('./commands/music/autoplay');
 const SkipCommand = require('./commands/music/skip');
 const StopCommand = require('./commands/music/stop');
 const PauseCommand = require('./commands/music/pause');
 const ResumeCommand = require('./commands/music/resume');
 const NowCommand = require('./commands/music/now');
 const SetDJCommand = require('./commands/music/setdj');
+const PlayCommand = require('./commands/music/play');
+const QueueCommand = require('./commands/music/queue');
 
 client.registry
     .registerGroups([
@@ -39,12 +41,13 @@ client.registry
         ['music', 'Music commands']
     ])
     .registerDefaults()
-    .registerCommand(new AutoplayCommand(client, player))
     .registerCommand(new SkipCommand(client, player))
     .registerCommand(new StopCommand(client, player))
     .registerCommand(new PauseCommand(client, player))
     .registerCommand(new ResumeCommand(client, player))
     .registerCommand(new NowCommand(client, player))
-    .registerCommand(new SetDJCommand(client, player));
+    .registerCommand(new SetDJCommand(client, player))
+    .registerCommand(new PlayCommand(client, player))
+    .registerCommand(new QueueCommand(client, player));
 
 client.login(TOKEN_ID);
